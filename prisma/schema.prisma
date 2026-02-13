@@ -1,0 +1,151 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  VIEWER
+}
+
+enum GameResult {
+  WIN
+  LOSS
+  TIE
+}
+
+enum ShootSide {
+  LEFT
+  RIGHT
+}
+
+enum Position {
+  C
+  LW
+  RW
+  LD
+  RD
+  G
+  OTHER
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  createdAt DateTime @default(now())
+
+  memberships TeamMember[]
+  ownedTeams  Team[]       @relation("TeamOwner")
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  ownerId   String
+  createdAt DateTime @default(now())
+
+  owner         User          @relation("TeamOwner", fields: [ownerId], references: [id])
+  members       TeamMember[]
+  players       Player[]
+  games         Game[]
+  lineupEntries LineupEntry[]
+  invites       TeamInvite[]
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  teamId    String
+  userId    String
+  role      TeamRole @default(VIEWER)
+  createdAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([teamId, userId])
+}
+
+model TeamInvite {
+  id         String    @id @default(cuid())
+  teamId     String
+  email      String
+  role       TeamRole  @default(VIEWER)
+  token      String    @unique
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  acceptedAt DateTime?
+
+  team Team @relation(fields: [teamId], references: [id])
+
+  @@index([teamId, email])
+}
+
+model Player {
+  id          String     @id @default(cuid())
+  teamId      String
+  name        String
+  number      Int?
+  shootSide   ShootSide?
+  parentsName String?
+  createdAt   DateTime   @default(now())
+
+  team           Team          @relation(fields: [teamId], references: [id])
+  lineupEntries  LineupEntry[]
+  playerOfGameIn Game[]        @relation("PlayerOfGame")
+
+  @@unique([teamId, number])
+  @@index([teamId, name])
+}
+
+model Game {
+  id             String     @id @default(cuid())
+  teamId         String
+  date           DateTime
+  location       String?
+  opponent       String
+  league         String?
+  result         GameResult
+  goalsFor       Int        @default(0)
+  goalsAgainst   Int        @default(0)
+  jerseyColor    String?
+  notes          String?
+  playerOfGameId String?
+  createdAt      DateTime   @default(now())
+
+  team          Team          @relation(fields: [teamId], references: [id])
+  playerOfGame  Player?       @relation("PlayerOfGame", fields: [playerOfGameId], references: [id])
+  lineupEntries LineupEntry[]
+
+  @@index([teamId, date])
+  @@index([teamId, league])
+}
+
+model LineupEntry {
+  id       String @id @default(cuid())
+  teamId   String
+  gameId   String
+  playerId String
+
+  position  Position
+  line      Int?
+  goals     Int      @default(0)
+  assists   Int      @default(0)
+  penalties Int      @default(0)
+  shutout   Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  team   Team   @relation(fields: [teamId], references: [id])
+  game   Game   @relation(fields: [gameId], references: [id])
+  player Player @relation(fields: [playerId], references: [id])
+
+  @@unique([gameId, playerId])
+  @@index([teamId, playerId])
+  @@index([teamId, gameId])
+}
