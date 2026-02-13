@@ -1,2 +1,2 @@
 # hockey-stat-tracker
-Simple app to track hockey Stats
+Simple app to track hockey stats
