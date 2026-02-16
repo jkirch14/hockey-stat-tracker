@@ -12,34 +12,30 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   pages: {
   signIn: "/login",
+  error: "/no-access", // shows when signIn() returns false
   },
-  callbacks: {
-    async signIn({ user }) {
-      if (!user.email) return false;
+ callbacks: {
+  async signIn({ user }) {
+    const email = user.email?.toLowerCase().trim();
+    if (!email) return false;
 
-      await db.user.upsert({
-        where: { email: user.email },
-        update: { name: user.name ?? undefined, image: user.image ?? undefined },
-        create: { email: user.email, name: user.name ?? undefined, image: user.image ?? undefined },
-      });
+    // Optional allowlist
+    const raw = process.env.AUTH_EMAIL_ALLOWLIST ?? "";
+    const allowlist = new Set(
+      raw
+        .split(",")
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean)
+    );
+    if (allowlist.has(email)) return true;
 
-      return true;
-    },
-    async jwt({ token }) {
-      if (!token.email) return token;
+    // Invite-only: allow only if they are a member of at least one team
+    const member = await db.teamMember.findFirst({
+      where: { user: { email } },
+      select: { id: true },
+    });
 
-      const dbUser = await db.user.findUnique({
-        where: { email: token.email as string },
-      });
-
-      if (dbUser) (token as any).uid = dbUser.id;
-      return token;
-    },
-    async session({ session, token }) {
-      if (session.user && (token as any).uid) {
-        (session.user as any).id = (token as any).uid;
-      }
-      return session;
-    },
+    return !!member;
   },
+},
 });
