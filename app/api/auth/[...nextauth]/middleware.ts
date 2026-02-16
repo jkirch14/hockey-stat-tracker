@@ -6,13 +6,12 @@ export default auth((req) => {
 
   const isLoggedIn = !!req.auth;
   const isAuthRoute = nextUrl.pathname.startsWith("/api/auth");
+  const isPublic = nextUrl.pathname === "/login";
 
-  // Allow auth routes
-  if (isAuthRoute) return NextResponse.next();
+  if (isAuthRoute || isPublic) return NextResponse.next();
 
-  // If not logged in, redirect to sign-in
   if (!isLoggedIn) {
-    const loginUrl = new URL("/api/auth/signin", nextUrl.origin);
+    const loginUrl = new URL("/login", nextUrl.origin);
     loginUrl.searchParams.set("callbackUrl", nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
   }

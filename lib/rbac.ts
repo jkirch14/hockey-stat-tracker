@@ -18,8 +18,17 @@ export async function requireTeamRole(teamId: string, required: TeamRole) {
     where: { teamId_userId: { teamId, userId: uid } },
   });
 
-  if (!membership) throw new Error("FORBIDDEN");
-  if (rank[membership.role] < rank[required]) throw new Error("FORBIDDEN");
+  if (!membership) throw new NoAccessError();
+  if (rank[membership.role] < rank[required]) throw new NoAccessError();
+
 
   return { uid, role: membership.role };
+}
+
+export class NoAccessError extends Error {
+  code = "NO_ACCESS";
+  status = 403;
+  constructor(message = "NO_ACCESS") {
+    super(message);
+  }
 }

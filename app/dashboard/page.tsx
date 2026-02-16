@@ -408,8 +408,15 @@ export default function DashboardPage() {
       const tJson = await tRes.json();
       const pJson = await pRes.json();
 
-      if (!tRes.ok) return setMsg(`Error loading team stats: ${tJson.error ?? "UNKNOWN"}`);
-      if (!pRes.ok) return setMsg(`Error loading player stats: ${pJson.error ?? "UNKNOWN"}`);
+      if (!tRes.ok && tJson.error === "NO_ACCESS") {
+        window.location.href = `/no-access?teamId=${encodeURIComponent(teamId)}`;
+        return;
+      }
+      if (!pRes.ok && tJson.error === "NO_ACCESS") {
+        window.location.href = `/no-access?teamId=${encodeURIComponent(teamId)}`;
+        return;
+      }
+
 
       setTeamStats(tJson);
       setPlayerRows((pJson.players ?? []).slice(0, 10)); // Top 10

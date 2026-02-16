@@ -10,6 +10,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   session: { strategy: "jwt" },
+  pages: {
+  signIn: "/login",
+  },
   callbacks: {
     async signIn({ user }) {
       if (!user.email) return false;
