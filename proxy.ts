@@ -7,7 +7,10 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
 
   const isAuthRoute = nextUrl.pathname.startsWith("/api/auth");
-  const isPublicRoute = nextUrl.pathname === "/login";
+  const isPublicRoute =
+    nextUrl.pathname === "/login" ||
+    nextUrl.pathname === "/no-access";
+
 
   // Allow Next internals
   if (nextUrl.pathname.startsWith("/_next") || nextUrl.pathname === "/favicon.ico") {
