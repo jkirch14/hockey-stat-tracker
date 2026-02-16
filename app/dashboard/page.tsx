@@ -181,6 +181,105 @@ function CumulativeGDChart({
   );
 }
 
+function WLTChart({
+  points,
+  width = 980,
+  height = 110,
+}: {
+  points: Array<{ xLabel: string; gf: number; ga: number; result: "WIN" | "LOSS" | "TIE" }>;
+  width?: number;
+  height?: number;
+}) {
+  if (points.length < 1) {
+    return <div style={{ padding: 12, opacity: 0.75 }}>Add games to see W/L/T timeline.</div>;
+  }
+
+  const pad = 16;
+  const innerW = width - pad * 2;
+
+  const x = (i: number) => (points.length === 1 ? pad + innerW / 2 : pad + (i / (points.length - 1)) * innerW);
+
+  // y positions for rows
+  const yWin = 36;
+  const yTie = 58;
+  const yLoss = 80;
+
+  const yFor = (r: "WIN" | "LOSS" | "TIE") => (r === "WIN" ? yWin : r === "TIE" ? yTie : yLoss);
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Win/Loss/Tie timeline">
+      <rect x="0" y="0" width={width} height={height} fill="white" stroke="#e6e6e6" rx="14" />
+
+      {/* labels */}
+      <text x={pad} y={22} fontSize="12" fill="#555" fontWeight="700">
+        W / L / T timeline (by game date)
+      </text>
+
+      <text x={pad} y={yWin + 4} fontSize="11" fill="#777">
+        W
+      </text>
+      <text x={pad} y={yTie + 4} fontSize="11" fill="#777">
+        T
+      </text>
+      <text x={pad} y={yLoss + 4} fontSize="11" fill="#777">
+        L
+      </text>
+
+      {/* guide lines */}
+      {[yWin, yTie, yLoss].map((yy) => (
+        <line key={yy} x1={pad} y1={yy} x2={pad + innerW} y2={yy} stroke="#f0f0f0" />
+      ))}
+
+      {/* points */}
+      {points.map((p, i) => {
+        const cx = x(i);
+        const cy = yFor(p.result);
+
+        // No bright colors; use shapes + grayscale:
+        // WIN: filled circle
+        // TIE: filled square (gray)
+        // LOSS: open circle
+        if (p.result === "WIN") {
+          return <circle key={i} cx={cx} cy={cy} r="5" fill="black" />;
+        }
+        if (p.result === "TIE") {
+          return <rect key={i} x={cx - 5} y={cy - 5} width="10" height="10" fill="#777" rx="2" />;
+        }
+        return <circle key={i} cx={cx} cy={cy} r="5" fill="white" stroke="black" strokeWidth="2" />;
+      })}
+
+      {/* x-axis labels: first/mid/last */}
+      {[
+        { i: 0, anchor: "start" as const },
+        { i: Math.floor((points.length - 1) / 2), anchor: "middle" as const },
+        { i: points.length - 1, anchor: "end" as const },
+      ].map(({ i, anchor }) => (
+        <text key={i} x={x(i)} y={height - 10} fontSize="11" fill="#777" textAnchor={anchor}>
+          {points[i]?.xLabel ?? ""}
+        </text>
+      ))}
+
+      {/* legend */}
+      <g transform={`translate(${width - pad - 260}, 14)`}>
+        <circle cx="10" cy="10" r="5" fill="black" />
+        <text x="22" y="14" fontSize="11" fill="#777">
+          Win
+        </text>
+
+        <rect x="70" y="5" width="10" height="10" fill="#777" rx="2" />
+        <text x="86" y="14" fontSize="11" fill="#777">
+          Tie
+        </text>
+
+        <circle cx="140" cy="10" r="5" fill="white" stroke="black" strokeWidth="2" />
+        <text x="152" y="14" fontSize="11" fill="#777">
+          Loss
+        </text>
+      </g>
+    </svg>
+  );
+}
+
 
 function LeagueBars({
   leagues,
@@ -230,7 +329,10 @@ export default function DashboardPage() {
   const [teamStats, setTeamStats] = useState<TeamStats | null>(null);
   const [playerRows, setPlayerRows] = useState<PlayerRow[]>([]);
   const [msg, setMsg] = useState<string>("");
-  const [trend, setTrend] = useState<Array<{ xLabel: string; gf: number; ga: number }>>([]);
+  const [trend, setTrend] = useState<
+  Array<{ xLabel: string; gf: number; ga: number; result: "WIN" | "LOSS" | "TIE" }>
+>([]);
+
 
   const teamId = useMemo(() => {
     if (!boot || "error" in boot) return "";
@@ -272,8 +374,10 @@ export default function DashboardPage() {
         xLabel: new Date(g.date).toLocaleDateString(),
         gf: g.goalsFor ?? 0,
         ga: g.goalsAgainst ?? 0,
+        result: g.result as "WIN" | "LOSS" | "TIE",
       }))
     );
+
 
       const tJson = await tRes.json();
       const pJson = await pRes.json();
@@ -389,6 +493,8 @@ export default function DashboardPage() {
   <div style={{ marginTop: 12 }}>
     <CumulativeGDChart points={trend} />
   </div>
+
+
 </div>
 
 
@@ -399,6 +505,9 @@ export default function DashboardPage() {
     </div>
   </div>
 </section>
+    <div style={{ marginTop: 12 }}>
+  <WLTChart points={trend} />
+</div>
     </main>
   );
 }
