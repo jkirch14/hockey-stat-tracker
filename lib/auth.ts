@@ -17,7 +17,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     error: "/no-access",
   },
 
-  callbacks: {
+callbacks: {
   async signIn({ user }) {
     const email = user.email?.toLowerCase().trim();
     if (!email) return false;
@@ -29,7 +29,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     );
     if (allowlist.has(email)) return true;
 
-    // If already a team member, allow
+    // Already a member of at least one team?
     const uid = (user as any).id as string | undefined;
     if (uid) {
       const member = await db.teamMember.findFirst({
@@ -39,14 +39,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (member) return true;
     }
 
-    // Otherwise allow ONLY if there is a pending invite for this email
+    // Pending (unaccepted + non-expired) invite for this email?
     const invite = await db.teamInvite.findFirst({
-      where: { email },
+      where: {
+        email,
+        acceptedAt: null,
+        expiresAt: { gt: new Date() },
+      },
       select: { id: true },
     });
 
     return !!invite;
   },
 },
+
 
 });
