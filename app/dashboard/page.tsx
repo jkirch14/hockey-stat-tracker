@@ -86,12 +86,17 @@ function LineChartGFGA({
       <polyline points={gaPts} fill="none" stroke="black" strokeWidth="2.5" strokeDasharray="6 6" opacity="0.75" />
 
       {/* endpoints */}
-      {points.map((p, i) => (
-        <g key={i}>
-          <circle cx={x(i)} cy={y(p.gf)} r="3" fill="black" />
-          <circle cx={x(i)} cy={y(p.ga)} r="3" fill="black" opacity="0.75" />
-        </g>
-      ))}
+      {points.map((p: any, i) => (
+  <g key={i}>
+    <title>
+      {`${p.xLabel} vs ${p.opponent}${p.league ? ` • ${p.league}` : ""}\nGF ${p.gf} • GA ${p.ga} • ${p.result}`}
+    </title>
+    <circle cx={x(i)} cy={y(p.gf)} r="3" fill="black" />
+    <circle cx={x(i)} cy={y(p.ga)} r="3" fill="black" opacity="0.75" />
+  </g>
+))}
+
+
 
       {/* labels */}
       <text x={pad} y={pad - 2} fontSize="12" fill="#555" fontWeight="700">
@@ -159,9 +164,19 @@ function CumulativeGDChart({
       <polyline points={pts} fill="none" stroke="black" strokeWidth="2.5" />
 
       {/* points */}
-      {cum.map((v, i) => (
-        <circle key={i} cx={x(i)} cy={y(v)} r="3" fill="black" />
-      ))}
+      {cum.map((v, i) => {
+        const p: any = points[i];
+        const perGame = (p.gf ?? 0) - (p.ga ?? 0);
+        return (
+          <g key={i}>
+            <title>
+              {`${p.xLabel} vs ${p.opponent}${p.league ? ` • ${p.league}` : ""}\nGame GD ${perGame} • Cum GD ${v} • ${p.result}`}
+            </title>
+            <circle cx={x(i)} cy={y(v)} r="3" fill="black" />
+          </g>
+        );
+      })}
+
 
       <text x={pad} y={pad - 2} fontSize="12" fill="#555" fontWeight="700">
         Cumulative Goal Differential (running GF − GA)
@@ -330,8 +345,16 @@ export default function DashboardPage() {
   const [playerRows, setPlayerRows] = useState<PlayerRow[]>([]);
   const [msg, setMsg] = useState<string>("");
   const [trend, setTrend] = useState<
-  Array<{ xLabel: string; gf: number; ga: number; result: "WIN" | "LOSS" | "TIE" }>
->([]);
+    Array<{
+      xLabel: string;
+      gf: number;
+      ga: number;
+      result: "WIN" | "LOSS" | "TIE";
+      opponent: string;
+      league: string | null;
+    }>
+  >([]);
+
 
 
   const teamId = useMemo(() => {
@@ -375,8 +398,11 @@ export default function DashboardPage() {
         gf: g.goalsFor ?? 0,
         ga: g.goalsAgainst ?? 0,
         result: g.result as "WIN" | "LOSS" | "TIE",
+        opponent: g.opponent ?? "",
+        league: g.league ?? null,
       }))
     );
+
 
 
       const tJson = await tRes.json();
