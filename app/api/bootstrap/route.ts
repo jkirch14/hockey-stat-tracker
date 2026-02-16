@@ -36,5 +36,8 @@ export async function POST() {
     },
   });
 
+  
   return NextResponse.json({ teamId: team.id, created: true, role: "OWNER", teamName: team.name });
 }
+
+export const runtime = "nodejs";

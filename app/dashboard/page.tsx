@@ -14,6 +14,7 @@ export default function DashboardPage() {
       const res = await fetch("/api/bootstrap", { method: "POST" });
       const json = (await res.json()) as BootstrapResult;
       setData(json);
+      if (!("error" in json)) localStorage.setItem("teamId", json.teamId);
     })();
   }, []);
 
