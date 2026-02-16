@@ -3,9 +3,11 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireTeamRole } from "@/lib/rbac";
+import { handleApiError } from "@/lib/api";
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
+  try {
+    const { searchParams } = new URL(req.url);
   const teamId = searchParams.get("teamId");
   if (!teamId) return NextResponse.json({ error: "teamId required" }, { status: 400 });
 
@@ -37,4 +39,7 @@ export async function GET(req: Request) {
       result: g.result,
     })),
   });
+  } catch (err: any) {
+    return handleApiError(err);
+  }
 }

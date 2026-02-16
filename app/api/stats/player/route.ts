@@ -3,8 +3,10 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { requireTeamRole } from "@/lib/rbac";
+import { handleApiError } from "@/lib/api";
 
 export async function GET(req: Request) {
+    try {
   const { searchParams } = new URL(req.url);
   const teamId = searchParams.get("teamId");
   const playerId = searchParams.get("playerId");
@@ -93,4 +95,7 @@ export async function GET(req: Request) {
     perPosition,
     gameLog: log,
   });
+    } catch (err: any) {
+      return handleApiError(err);
+    }
 }

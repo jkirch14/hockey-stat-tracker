@@ -408,14 +408,19 @@ export default function DashboardPage() {
       const tJson = await tRes.json();
       const pJson = await pRes.json();
 
-      if (!tRes.ok && tJson.error === "NO_ACCESS") {
-        window.location.href = `/no-access?teamId=${encodeURIComponent(teamId)}`;
-        return;
-      }
-      if (!pRes.ok && tJson.error === "NO_ACCESS") {
-        window.location.href = `/no-access?teamId=${encodeURIComponent(teamId)}`;
-        return;
-      }
+    if (!tRes.ok && tJson.error === "NO_ACCESS") {
+      window.location.href = `/no-access?teamId=${encodeURIComponent(teamId)}`;
+      return;
+    }
+    if (!pRes.ok && pJson.error === "NO_ACCESS") {
+      window.location.href = `/no-access?teamId=${encodeURIComponent(teamId)}`;
+      return;
+    }
+    if (!trRes.ok && trJson.error === "NO_ACCESS") {
+      window.location.href = `/no-access?teamId=${encodeURIComponent(teamId)}`;
+      return;
+    }
+
 
 
       setTeamStats(tJson);

@@ -28,7 +28,10 @@ export async function requireTeamRole(teamId: string, required: TeamRole) {
 export class NoAccessError extends Error {
   code = "NO_ACCESS";
   status = 403;
+
   constructor(message = "NO_ACCESS") {
     super(message);
+    this.name = "NoAccessError";
   }
 }
+
