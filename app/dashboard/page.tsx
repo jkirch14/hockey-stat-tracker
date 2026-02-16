@@ -39,11 +39,128 @@ function Card({ title, value, sub }: { title: string; value: string; sub?: strin
   );
 }
 
+function LineChartGFGA({
+  points,
+  width = 980,
+  height = 220,
+}: {
+  points: Array<{ xLabel: string; gf: number; ga: number }>;
+  width?: number;
+  height?: number;
+}) {
+  if (points.length < 2) {
+    return <div style={{ padding: 12, opacity: 0.75 }}>Add at least 2 games to see the trend.</div>;
+  }
+
+  const pad = 16;
+  const innerW = width - pad * 2;
+  const innerH = height - pad * 2;
+
+  const maxY = Math.max(
+    1,
+    ...points.flatMap((p) => [p.gf, p.ga])
+  );
+
+  const x = (i: number) => pad + (i / (points.length - 1)) * innerW;
+  const y = (v: number) => pad + innerH - (v / maxY) * innerH;
+
+  const poly = (vals: number[]) => vals.map((v, i) => `${x(i)},${y(v)}`).join(" ");
+
+  const gfPts = poly(points.map((p) => p.gf));
+  const gaPts = poly(points.map((p) => p.ga));
+
+  // No explicit colors requested; use defaults but still distinguish lines with dash patterns.
+  return (
+    <svg width="100%" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Goals for and against over time">
+      {/* border */}
+      <rect x="0" y="0" width={width} height={height} fill="white" stroke="#e6e6e6" rx="14" />
+
+      {/* grid lines */}
+      {[0.25, 0.5, 0.75].map((t) => {
+        const yy = pad + innerH - t * innerH;
+        return <line key={t} x1={pad} y1={yy} x2={pad + innerW} y2={yy} stroke="#f0f0f0" />;
+      })}
+
+      {/* lines */}
+      <polyline points={gfPts} fill="none" stroke="black" strokeWidth="2.5" />
+      <polyline points={gaPts} fill="none" stroke="black" strokeWidth="2.5" strokeDasharray="6 6" opacity="0.75" />
+
+      {/* endpoints */}
+      {points.map((p, i) => (
+        <g key={i}>
+          <circle cx={x(i)} cy={y(p.gf)} r="3" fill="black" />
+          <circle cx={x(i)} cy={y(p.ga)} r="3" fill="black" opacity="0.75" />
+        </g>
+      ))}
+
+      {/* labels */}
+      <text x={pad} y={pad - 2} fontSize="12" fill="#555" fontWeight="700">
+        GF (solid) vs GA (dashed)
+      </text>
+
+      {/* x-axis labels (first, middle, last) */}
+      {[
+        { i: 0, anchor: "start" as const },
+        { i: Math.floor((points.length - 1) / 2), anchor: "middle" as const },
+        { i: points.length - 1, anchor: "end" as const },
+      ].map(({ i, anchor }) => (
+        <text key={i} x={x(i)} y={height - 6} fontSize="11" fill="#777" textAnchor={anchor}>
+          {points[i].xLabel}
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+function LeagueBars({
+  leagues,
+}: {
+  leagues: Array<{ league: string; wins: number; losses: number; ties: number; games: number }>;
+}) {
+  if (!leagues.length) return <div style={{ padding: 12, opacity: 0.75 }}>No league data yet.</div>;
+
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      {leagues.map((l) => {
+        const total = Math.max(1, l.games);
+        const wPct = (l.wins / total) * 100;
+        const tPct = (l.ties / total) * 100;
+        const lPct = (l.losses / total) * 100;
+
+        return (
+          <div key={l.league}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "baseline" }}>
+              <div style={{ fontWeight: 900 }}>{l.league}</div>
+              <div style={{ fontSize: 12, opacity: 0.75, fontWeight: 800 }}>
+                {l.wins}-{l.losses}-{l.ties} ({l.games})
+              </div>
+            </div>
+
+            <div style={{ marginTop: 6, height: 14, borderRadius: 999, overflow: "hidden", border: "1px solid #e6e6e6", background: "#fafafa" }}>
+              <div style={{ display: "flex", height: "100%" }}>
+                <div style={{ width: `${wPct}%`, background: "#111" }} title={`Wins: ${l.wins}`} />
+                <div style={{ width: `${tPct}%`, background: "#777" }} title={`Ties: ${l.ties}`} />
+                <div style={{ width: `${lPct}%`, background: "#ddd" }} title={`Losses: ${l.losses}`} />
+              </div>
+            </div>
+
+            <div style={{ marginTop: 6, fontSize: 12, opacity: 0.7 }}>
+              Wins (dark) • Ties (mid) • Losses (light)
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
 export default function DashboardPage() {
   const [boot, setBoot] = useState<BootstrapResult | null>(null);
   const [teamStats, setTeamStats] = useState<TeamStats | null>(null);
   const [playerRows, setPlayerRows] = useState<PlayerRow[]>([]);
   const [msg, setMsg] = useState<string>("");
+  const [trend, setTrend] = useState<Array<{ xLabel: string; gf: number; ga: number }>>([]);
 
   const teamId = useMemo(() => {
     if (!boot || "error" in boot) return "";
@@ -71,10 +188,22 @@ export default function DashboardPage() {
 
     (async () => {
       setMsg("Loading stats…");
-      const [tRes, pRes] = await Promise.all([
+      const [tRes, pRes, trRes] = await Promise.all([
         fetch(`/api/stats/team?teamId=${encodeURIComponent(teamId)}`),
         fetch(`/api/stats/players?teamId=${encodeURIComponent(teamId)}`),
+        fetch(`/api/stats/trends?teamId=${encodeURIComponent(teamId)}`),
       ]);
+
+    const trJson = await trRes.json();
+    if (!trRes.ok) return setMsg(`Error loading trends: ${trJson.error ?? "UNKNOWN"}`);
+
+    setTrend(
+      (trJson.games ?? []).map((g: any) => ({
+        xLabel: new Date(g.date).toLocaleDateString(),
+        gf: g.goalsFor ?? 0,
+        ga: g.goalsAgainst ?? 0,
+      }))
+    );
 
       const tJson = await tRes.json();
       const pJson = await pRes.json();
@@ -180,6 +309,21 @@ export default function DashboardPage() {
           </div>
         </div>
       </section>
+      <section style={{ marginTop: 18, display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 12 }}>
+  <div style={{ border: "1px solid #ddd", borderRadius: 14, padding: 14, background: "white" }}>
+    <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>Goals trend</h2>
+    <div style={{ marginTop: 10 }}>
+      <LineChartGFGA points={trend} />
+    </div>
+  </div>
+
+  <div style={{ border: "1px solid #ddd", borderRadius: 14, padding: 14, background: "white" }}>
+    <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>League record</h2>
+    <div style={{ marginTop: 10 }}>
+      <LeagueBars leagues={teamStats?.leagues ?? []} />
+    </div>
+  </div>
+</section>
     </main>
   );
 }
