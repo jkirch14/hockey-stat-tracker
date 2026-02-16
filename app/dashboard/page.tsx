@@ -109,6 +109,7 @@ export default function DashboardPage() {
         <nav style={{ display: "flex", gap: 12 }}>
           <Link href="/players">Players</Link>
           <Link href="/games">Games</Link>
+          <Link href="/stats/players">Player Stats</Link>
           <Link href="/admin/sharing">Sharing</Link>
         </nav>
       </header>
