@@ -18,31 +18,35 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   },
 
   callbacks: {
-    async signIn({ user }) {
-      const email = user.email?.toLowerCase().trim();
-      if (!email) return false;
+  async signIn({ user }) {
+    const email = user.email?.toLowerCase().trim();
+    if (!email) return false;
 
-      // Optional allowlist
-      const raw = process.env.AUTH_EMAIL_ALLOWLIST ?? "";
-      const allowlist = new Set(
-        raw
-          .split(",")
-          .map((s) => s.trim().toLowerCase())
-          .filter(Boolean)
-      );
+    // Optional allowlist
+    const raw = process.env.AUTH_EMAIL_ALLOWLIST ?? "";
+    const allowlist = new Set(
+      raw.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
+    );
+    if (allowlist.has(email)) return true;
 
-      if (allowlist.has(email)) return true;
-
-      // Invite-only check by userId
-      const uid = (user as any).id as string | undefined;
-      if (!uid) return false;
-
+    // If already a team member, allow
+    const uid = (user as any).id as string | undefined;
+    if (uid) {
       const member = await db.teamMember.findFirst({
         where: { userId: uid },
         select: { id: true },
       });
+      if (member) return true;
+    }
 
-      return !!member;
-    },
+    // Otherwise allow ONLY if there is a pending invite for this email
+    const invite = await db.teamInvite.findFirst({
+      where: { email },
+      select: { id: true },
+    });
+
+    return !!invite;
   },
+},
+
 });
