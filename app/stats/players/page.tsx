@@ -188,7 +188,9 @@ export default function PlayerStatsPage() {
         {filtered.map((r) => (
           <div key={r.id} style={{ display: "grid", gridTemplateColumns: "70px 1.4fr 70px 70px 70px 70px 80px 80px 140px", padding: 12, borderTop: "1px solid #eee", alignItems: "baseline" }}>
             <div style={{ opacity: 0.85 }}>{r.number ?? ""}</div>
-            <div style={{ fontWeight: 900 }}>{r.name}</div>
+            <div style={{ fontWeight: 900 }}>
+            <Link href={`/players/${r.id}/stats`}>{r.name}</Link>
+            </div>
             <div style={{ textAlign: "right" }}>{r.totals.games}</div>
             <div style={{ textAlign: "right" }}>{r.totals.goals}</div>
             <div style={{ textAlign: "right" }}>{r.totals.assists}</div>
