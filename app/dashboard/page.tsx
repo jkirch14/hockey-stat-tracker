@@ -112,6 +112,76 @@ function LineChartGFGA({
   );
 }
 
+function CumulativeGDChart({
+  points,
+  width = 980,
+  height = 220,
+}: {
+  points: Array<{ xLabel: string; gf: number; ga: number }>;
+  width?: number;
+  height?: number;
+}) {
+  if (points.length < 2) {
+    return <div style={{ padding: 12, opacity: 0.75 }}>Add at least 2 games to see the cumulative trend.</div>;
+  }
+
+  const pad = 16;
+  const innerW = width - pad * 2;
+  const innerH = height - pad * 2;
+
+  // build cumulative series
+  let running = 0;
+  const cum = points.map((p) => {
+    running += (p.gf ?? 0) - (p.ga ?? 0);
+    return running;
+  });
+
+  const minY = Math.min(0, ...cum);
+  const maxY = Math.max(0, ...cum);
+  const range = Math.max(1, maxY - minY);
+
+  const x = (i: number) => pad + (i / (points.length - 1)) * innerW;
+  const y = (v: number) => pad + innerH - ((v - minY) / range) * innerH;
+
+  const pts = cum.map((v, i) => `${x(i)},${y(v)}`).join(" ");
+
+  // zero line
+  const y0 = y(0);
+
+  return (
+    <svg width="100%" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Cumulative goal differential over season">
+      <rect x="0" y="0" width={width} height={height} fill="white" stroke="#e6e6e6" rx="14" />
+
+      {/* zero baseline */}
+      <line x1={pad} y1={y0} x2={pad + innerW} y2={y0} stroke="#e6e6e6" strokeWidth="2" />
+
+      {/* line */}
+      <polyline points={pts} fill="none" stroke="black" strokeWidth="2.5" />
+
+      {/* points */}
+      {cum.map((v, i) => (
+        <circle key={i} cx={x(i)} cy={y(v)} r="3" fill="black" />
+      ))}
+
+      <text x={pad} y={pad - 2} fontSize="12" fill="#555" fontWeight="700">
+        Cumulative Goal Differential (running GF − GA)
+      </text>
+
+      {/* x labels: first/mid/last */}
+      {[
+        { i: 0, anchor: "start" as const },
+        { i: Math.floor((points.length - 1) / 2), anchor: "middle" as const },
+        { i: points.length - 1, anchor: "end" as const },
+      ].map(({ i, anchor }) => (
+        <text key={i} x={x(i)} y={height - 6} fontSize="11" fill="#777" textAnchor={anchor}>
+          {points[i].xLabel}
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+
 function LeagueBars({
   leagues,
 }: {
@@ -310,12 +380,17 @@ export default function DashboardPage() {
         </div>
       </section>
       <section style={{ marginTop: 18, display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 12 }}>
-  <div style={{ border: "1px solid #ddd", borderRadius: 14, padding: 14, background: "white" }}>
-    <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>Goals trend</h2>
-    <div style={{ marginTop: 10 }}>
-      <LineChartGFGA points={trend} />
-    </div>
+<div style={{ border: "1px solid #ddd", borderRadius: 14, padding: 14, background: "white" }}>
+  <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>Goals trend</h2>
+  <div style={{ marginTop: 10 }}>
+    <LineChartGFGA points={trend} />
   </div>
+
+  <div style={{ marginTop: 12 }}>
+    <CumulativeGDChart points={trend} />
+  </div>
+</div>
+
 
   <div style={{ border: "1px solid #ddd", borderRadius: 14, padding: 14, background: "white" }}>
     <h2 style={{ margin: 0, fontSize: 16, fontWeight: 900 }}>League record</h2>
